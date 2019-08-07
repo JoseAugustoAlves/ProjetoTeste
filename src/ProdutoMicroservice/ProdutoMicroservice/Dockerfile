@@ -1,22 +1,17 @@
-#Depending on the operating system of the host machines(s) that will build or run the containers, the image specified in the FROM statement may need to be changed.
-#For more information, please see https://aka.ms/containercompat
 
-FROM microsoft/dotnet:2.1-aspnetcore-runtime-nanoserver-1803 AS base
+FROM microsoft/dotnet:2.2-sdk AS build-env
 WORKDIR /app
-EXPOSE 80
 
-FROM microsoft/dotnet:2.1-sdk-nanoserver-1803 AS build
-WORKDIR /src
-COPY ["ProdutoMicroservice/ProdutoMicroservice.csproj", "ProdutoMicroservice/"]
-RUN dotnet restore "ProdutoMicroservice/ProdutoMicroservice.csproj"
-COPY . .
-WORKDIR "/src/ProdutoMicroservice"
-RUN dotnet build "ProdutoMicroservice.csproj" -c Release -o /app
+# Copiar csproj e restaurar dependencias
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM build AS publish
-RUN dotnet publish "ProdutoMicroservice.csproj" -c Release -o /app
+# Build da aplicacao
+COPY . ./
+RUN dotnet publish -c Release -o out
 
-FROM base AS final
+# Build da imagem
+FROM microsoft/dotnet:2.2-aspnetcore-runtime
 WORKDIR /app
-COPY --from=publish /app .
+COPY --from=build-env /app/out .
 ENTRYPOINT ["dotnet", "ProdutoMicroservice.dll"]
